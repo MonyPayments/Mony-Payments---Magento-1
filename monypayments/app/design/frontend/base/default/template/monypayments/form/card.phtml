@@ -1,0 +1,159 @@
+<?php /** @var $this Mony_Monypayments_Block_Form_Card */ ?>
+
+<?php $customer = Mage::getSingleton('customer/session'); ?>
+<?php $quote = Mage::getSingleton('checkout/session')->getQuote() ?>
+<?php $_code = $this->getMethodCode() ?>
+<?php $cardHelper = Mage::helper('monypayments/card'); ?>
+<?php $savedCard = null ?>
+
+<ul class="form-list" id="payment_form_<?php echo $_code ?>" style="display:none;">
+    <?php if ($customer->isLoggedIn() && $cardHelper->canSaveCards()): ?>
+        <?php if ($savedCard = Mage::getModel('monypayments/customer')->getSavedCards($customer)) : ?>
+        <li>
+            <p>
+                <select id="<?php echo $_code ?>-payment-select" name="payment[<?php echo $_code ?>_token]" class="payment-select required-entry" title="" onchange="monyBasic.newPayment(this.value == 'new')">
+                    <option selected="selected" disabled="disabled"><?php echo $this->__('Choose saved card...') ?></option>
+                    <?php foreach ($savedCard as  $card) : ?>
+                        <option value="<?php echo $cardHelper->getToken($card) ?>"><?php echo $this->getCardOptionText($card) ?></option>
+                    <?php endforeach ;?>
+                    <option value="new"><?php echo $this->__('Use another card') ?></option>
+                </select>
+            </p>
+        </li>
+        <?php endif; ?>
+    <?php endif; ?>
+    <fieldset class="group-select" id="<?php echo $_code ?>-new-payment-form" <?php if ($customer->isLoggedIn() && $savedCard && $cardHelper->canSaveCards()) : ?>style="display:none;"<?php endif ?>>
+    <li>
+        <label for="<?php echo $_code ?>_cc_owner" class="required"><em>*</em><?php echo $this->__('Name on Card') ?></label>
+        <div class="input-box">
+            <input type="text" title="<?php echo Mage::helper('core')->quoteEscape($this->__('Name on Card')) ?>" class="input-text" id="<?php echo $_code ?>_cc_owner" value="<?php echo $this->escapeHtml($this->getInfoData('cc_owner')) ?>" data-mony-card-name />
+        </div>
+    </li>
+
+    <li>
+        <label for="<?php echo $_code ?>_cc_number" class="required"><em>*</em><?php echo $this->__('Credit Card Number') ?></label>
+        <div class="input-box">
+            <input type="tel" id="<?php echo $_code ?>_cc_number" title="<?php echo Mage::helper('core')->quoteEscape($this->__('Credit Card Number')) ?>" class="input-text validate-cc-number required-entry validate-cc-type" value="" data-mony-card-number />
+        </div>
+    </li>
+    <li>
+        <label for="<?php echo $_code ?>_expiration" class="required"><em>*</em><?php echo $this->__('Expiration Date') ?></label>
+        <div class="input-box">
+            <div class="v-fix">
+                <select id="<?php echo $_code ?>_expiration" class="month" data-mony-expiry-month>
+                    <?php $_ccExpMonth = $this->getInfoData('cc_exp_month') ?>
+                    <?php foreach ($this->getCcMonths() as $k=>$v): ?>
+                        <option value="<?php echo $k?$k:'' ?>"<?php if($k==$_ccExpMonth): ?> selected="selected"<?php endif ?>><?php echo $v ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+            <div class="v-fix">
+                <?php $_ccExpYear = $this->getInfoData('cc_exp_year') ?>
+                <select id="<?php echo $_code ?>_expiration_yr" class="year" data-mony-expiry-year>
+                    <?php foreach ($this->getCcYears() as $k=>$v): ?>
+                        <option value="<?php echo $k?$k:'' ?>"<?php if($k==$_ccExpYear): ?> selected="selected"<?php endif ?>><?php echo $v ?></option>
+                    <?php endforeach ?>
+                </select>
+            </div>
+        </div>
+        <div class="validation-advice hidden" id="additional-validation-advice-expiry">
+            Expiration date must be in the future
+        </div>
+    </li>
+    <?php echo $this->getChildHtml() ?>
+    <?php if($this->hasVerification()): ?>
+        <li>
+            <label for="<?php echo $_code ?>_cc_cid" class="required"><em>*</em><?php echo $this->__('Card Verification Number') ?></label>
+            <div class="input-box">
+                <div class="v-fix">
+                    <input type="tel" title="<?php echo Mage::helper('core')->quoteEscape($this->__('Card Verification Number')) ?>" class="input-text cvv required-entry validate-cc-cvn" id="<?php echo $_code ?>_cc_cid" value="" data-mony-security-code maxLength="4" />
+                    <div class="validation-advice hidden" id="additional-validation-advice-cvv">
+                        CVV must be 3 to 4 digits
+                    </div>
+                </div>
+                <div class="v-fix">
+                    <a href="#" class="cvv-what-is-this"><?php echo $this->__('What is this?') ?></a>
+                </div>
+            </div>
+        </li>
+    <?php endif; ?>
+    <?php if ($cardHelper->canSaveCards($quote)) : ?>
+        <li id="<?php echo $_code ?>_save_payment_wrapper" class="control<?php if ($cardHelper->isSaveCardsHidden()) echo ' hide' ?>">
+            <input type="checkbox" name="payment[<?php echo $_code ?>_save_card]" id="<?php echo $_code ?>_save_payment" class="checkbox"><label for="<?php echo $_code ?>_save_payment"><?php echo $this->__('Save this card for future use') ?></label>
+        </li>
+    <?php endif; ?>
+    </fieldset>
+</ul>
+
+<script type="text/javascript">
+
+    //CVV validation
+    <?php if($this->hasVerification()): ?>
+
+        var cvv_input = document.getElementById("<?php echo $_code ?>_cc_cid");
+        var validation_advice_cvv = document.getElementById("additional-validation-advice-cvv");
+
+        cvv_input.addEventListener('input', function() {
+            if( cvv_input.value.length < 3 || cvv_input.value.length > 4 ) {
+                validation_advice_cvv.classList.remove("hidden");
+            }
+            else {
+                validation_advice_cvv.classList.add("hidden");
+            }
+        });
+    <?php endif; ?>
+
+    //expiry validation
+    var expiry_input_month = document.getElementById("<?php echo $_code ?>_expiration");
+    var expiry_input_year = document.getElementById("<?php echo $_code ?>_expiration_yr");
+    var validation_advice_expiry = document.getElementById("additional-validation-advice-expiry");
+
+    expiry_input_month.addEventListener('change', expiry_date_validation, false);
+    expiry_input_year.addEventListener('change', expiry_date_validation, false);
+
+    function expiry_date_validation() {
+        //combined date is set to next to accommodate credit cards which expires this month
+        var combined_date = ( parseInt(expiry_input_month.value) + 1 ) + "/01/" + expiry_input_year.value;
+        var expiry_date = new Date(combined_date);
+
+        var today = new Date();
+
+        if( today > expiry_date ) {
+            validation_advice_expiry.classList.remove("hidden");
+        }
+        else {
+            validation_advice_expiry.classList.add("hidden");
+        }
+    }
+</script>
+
+<?php if ($cardHelper->canSaveCards($quote)) : ?>
+    <script type="text/javascript">
+        // Function to handling save payment update
+        var monyBasic;
+        if (typeof monyBasic !== 'object') {
+            var monyBasic = new MonyBasic();
+        }
+
+        <?php
+        /**
+         * Perform for register during checkout for OneStepCheckout
+         */
+        ?>
+        <?php if ($cardHelper->isSaveCardsHidden()): ?>
+            var showHide = document.observe('dom:loaded', function(e) {
+                var createAccount = document.getElementById('create_account_checkbox_id');
+                if (typeof createAccount !== 'undefined') {
+                    Event.observe('create_account_checkbox_id', 'click', function() {
+                        if (createAccount.checked) {
+                            monyBasic.removeClass('<?php echo $_code ?>_save_payment_wrapper', 'hide');
+                        } else {
+                            monyBasic.addClass('<?php echo $_code ?>_save_payment_wrapper', 'hide');
+                        }
+                    });
+                }
+            });
+        <?php endif; ?>
+
+    </script>
+<?php endif; ?>

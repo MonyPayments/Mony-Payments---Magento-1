@@ -1,0 +1,158 @@
+<?php
+/**
+ * Tokenjs file for Mony to generate token
+ *
+ * @package   Mony_Monypayments
+ * @author    Mony payments <support@monypayments.com>
+ * @copyright Copyright (c) 2015-2016 Mony payments (http://www.monypayments.com)
+ */
+?>
+<?php $_code = Mony_Monypayments_Model_Method_Card::PAYMENT_METHOD_CODE; // Set the code for creating token ?>
+
+<?php if (Mage::helper('monypayments')->isEnabled()) :?>
+    <script type="text/javascript">
+        // Load the MonyBasic class and create Mony data
+        var monyBasic;
+        if (typeof monyBasic !== 'object') {
+            monyBasic = new MonyBasic();
+        }
+	    
+        if (typeof window.oscPlaceOrder !== 'undefined') {
+            // set original to apply later
+            var original = window.oscPlaceOrder;
+
+            // Create token on the OscPlaceOrder
+            window.oscPlaceOrder = function(element) {
+                // Calculate should process order or not
+                var process = false;
+                var method = document.getElementById('p_method_<?php echo $_code ?>').checked;
+                var monySelect = document.getElementById('<?php echo $_code ?>-payment-select');
+
+                // If not login and use mony
+                if (method && !monySelect) {
+                    process = true;
+                }
+                // If login and use mony
+                else if (method && monySelect.value == 'new') {
+                    process = true;
+                }
+
+                // Check whether the payment method is mony
+                if (process && checkpayment() && typeof Mony !== 'undefined') {
+                    // Button place order processing
+                    var elementId = element.getAttribute('id');
+                    element.disabled = true; // disable button place order
+                    document.getElementById('onestepcheckout-place-order-loading').style.display = "block";
+                    monyBasic.removeClass(elementId, 'onestepcheckout-btn-checkout');
+                    monyBasic.addClass(elementId, 'place-order-loader');
+
+                    // Init Mony Function
+                    var thisClass = this;
+                    var moniInit = Mony.init({apiKey: '<?php echo $this->getApiKey() ?>'});
+
+                    // Generate Token using Moni.JS
+                    Mony.createCardToken({form: thisClass.form}, function(err, response) {
+                        // If error show message to customer
+                        if (err) {
+                            // handle error
+                            alert(err.message);
+
+                            // Button place order available
+                            element.disabled = false; // disable button place order
+                            document.getElementById('onestepcheckout-place-order-loading').style.display = "none";
+                            monyBasic.removeClass(elementId, 'place-order-loader');
+                            monyBasic.addClass(elementId, 'onestepcheckout-btn-checkout');
+
+                        } else { // Set token and date value
+                            // Create data to be sent on payment
+                            var parameters = {
+                                'payment[cc_number_enc]': null,
+                                'payment[cc_last4]': response.card.truncatedNumber,
+                                'payment[monypayments_token]': response.card.token,
+                                'payment[monypayments_fetched_at]': '<?php echo Mage::getSingleton('core/date')->gmtDate(); // Use UTC time to save to Database ?>'
+                            };
+
+                            // Added the Mony data to checkout
+                            monyBasic.createHiddenInput(parameters, thisClass.form);
+
+                            // Run original function
+                            original.call(thisClass, element);
+                        }
+                    });
+                } else {
+                    // Run original function
+                    original.call(this, element);
+                }
+            };
+        }
+
+        /**
+         * This is the function with manipulate button.
+         * And this will apply across other OneStepCheckout extensions
+         */
+        else {
+            // document.observe('dom:loaded', function() {
+            window.addEventListener('load', function() {
+                // init mony
+                var moniInit = Mony.init({apiKey: '<?php echo $this->getApiKey() ?>'});
+
+                // manipulate button place order to handle token generation
+                var placeOrderButton = document.getElementById('onestepcheckout-place-order');
+                var monyPlaceOrder = placeOrderButton.cloneNode(true);
+                monyPlaceOrder.id = 'mony-onestepcheckout-place-order';
+                monyPlaceOrder.classList.remove('onestepcheckout-place-order');
+                placeOrderButton.style.display = 'none';
+                placeOrderButton.parentNode.insertBefore(monyPlaceOrder, placeOrderButton.nextSibling);
+
+                // prepare variable within DOM element
+                var paymentForm = monyBasic.findClosest(document.querySelector('[data-mony-card-name]'), 'form');
+
+                // Start function on place order
+                var placeOrder = monyPlaceOrder.onclick = function() {
+
+                    // perform validation
+                    var form = new VarienForm('onestepcheckout-form');
+                    if (!form.validator.validate())  {
+                        return;
+                    }
+                    // Check the payment method
+                    /**
+                     * NOTE: most of onestep checkout extension will use radiobutton which cannot retrive on this.currentMethod
+                     */
+                    var method = document.getElementById('p_method_<?php echo $_code ?>').checked;
+                    var monySelect = document.getElementById('<?php echo $_code ?>-payment-select');
+
+		    if (method && ( !monySelect || monySelect.value == 'new' ) ) {
+                        // create token
+                        Mony.createCardToken({form: paymentForm}, function(err, response) {
+                            if (err) {
+                                // handle error
+                            } else {
+                                var parameters = {
+                                    'payment[cc_number_enc]': null,
+                                    'payment[cc_last4]': response.card.truncatedNumber,
+                                    'payment[monypayments_token]': response.card.token,
+                                    'payment[monypayments_fetched_at]': '<?php echo Mage::getSingleton('core/date')->gmtDate(); // Use UTC time to save to Database ?>'
+                                };
+
+                                // Added the Mony data to checkout
+                                monyBasic.createHiddenInput(parameters, paymentForm);
+
+                                // handle button and continue place order
+                                monyPlaceOrder.style.display = 'none';
+                                placeOrderButton.style.display = 'initial';
+                                placeOrderButton.click();
+                            }
+                        });
+                    } else {
+                        // handle button and continue place order
+                        monyPlaceOrder.style.display = 'none';
+                        placeOrderButton.style.display = 'initial';
+                        placeOrderButton.click();
+                    }
+                };
+            });
+        }
+
+    </script>
+<?php endif; ?>

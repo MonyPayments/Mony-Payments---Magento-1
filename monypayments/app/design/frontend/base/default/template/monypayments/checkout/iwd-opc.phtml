@@ -1,0 +1,106 @@
+<?php
+/**
+ * Tokenjs file for Mony to generate token
+ *
+ * @package   Mony_Monypayments
+ * @author    Mony payments <support@monypayments.com>
+ * @copyright Copyright (c) 2015-2016 Mony payments (http://www.monypayments.com)
+ */
+?>
+<?php $_code = Mony_Monypayments_Model_Method_Card::PAYMENT_METHOD_CODE; // Set the code for creating token ?>
+
+<?php if (Mage::helper('monypayments')->isEnabled()) :?>
+    <script type="text/javascript">
+        // Load the MonyBasic class and create Mony data
+        var monyBasic;
+        if (typeof monyBasic !== 'object') {
+            monyBasic = new MonyBasic();
+        }
+	    
+            window.addEventListener('load', function() {
+                // init mony
+                var moniInit = Mony.init({apiKey: '<?php echo $this->getApiKey() ?>'});
+		
+                // manipulate button place order to handle token generation
+                var placeOrderButton = document.getElementsByClassName('opc-btn-checkout');
+		placeOrderButton = placeOrderButton[0];
+		
+		
+                var monyPlaceOrder = placeOrderButton.cloneNode(true);
+                monyPlaceOrder.id = 'mony-onestepcheckout-place-order';
+                placeOrderButton.style.display = 'none';
+                placeOrderButton.parentNode.insertBefore(monyPlaceOrder, placeOrderButton);
+
+                // prepare variable within DOM element
+                var paymentForm = monyBasic.findClosest(document.querySelector('[data-mony-card-name]'), 'form');
+
+                // Start function on place order
+                var placeOrder = monyPlaceOrder.onclick = function() {
+
+                    // perform validation
+                    var form = new VarienForm('co-payment-form');
+                    if (!form.validator.validate())  {
+                        return;
+                    }
+                    // Check the payment method
+                    /**
+                     * NOTE: most of onestep checkout extension will use radiobutton which cannot retrive on this.currentMethod
+                     */
+                    var method = document.getElementById('p_method_<?php echo $_code ?>').checked;
+                    var monySelect = document.getElementById('<?php echo $_code ?>-payment-select');
+
+		    if (method && ( !monySelect || monySelect.value == 'new' ) ) {
+                        // create token
+                        Mony.createCardToken({form: paymentForm}, function(err, response) {
+                            if (err) {
+                                // handle error
+                            } else {
+                                var parameters = {
+                                    'payment[cc_number_enc]': null,
+                                    'payment[cc_last4]': response.card.truncatedNumber,
+                                    'payment[monypayments_token]': response.card.token,
+                                    'payment[monypayments_fetched_at]': '<?php echo Mage::getSingleton('core/date')->gmtDate(); // Use UTC time to save to Database ?>'
+                                };
+
+                                // Added the Mony data to checkout
+                                monyBasic.createHiddenInput(parameters, paymentForm);
+
+                                // handle button and continue place order
+                                monyPlaceOrder.style.display = 'none';
+                                placeOrderButton.style.display = 'initial';
+                                placeOrderButton.click();
+                            }
+                        });
+                    } else {
+		    
+                        // handle button and continue place order
+                        monyPlaceOrder.style.display = 'none';
+                        placeOrderButton.style.display = 'initial';
+                        placeOrderButton.click();
+                    }
+                };
+		
+		//handles the auto-disabling of gfields due to IWD shipping methods onChange event
+		placeOrderButton.onmousedown = function() {
+			var cc_number_enc = document.getElementById("cc_number_enc");
+			var cc_last4 = document.getElementById("cc_last4");
+			var monypayments_token = document.getElementById("monypayments_token");
+			var monypayments_fetched_at = document.getElementById("monypayments_fetched_at");
+			
+			if( cc_number_enc != null && cc_number_enc.disabled ) {
+				cc_number_enc.disabled = false;
+			}
+			if( cc_last4 != null && cc_last4.disabled ) {
+				cc_last4.disabled = false;
+			}
+			if( monypayments_token != null && monypayments_token.disabled ) {
+				monypayments_token.disabled = false;
+			}
+			if( monypayments_fetched_at != null && monypayments_fetched_at.disabled ) {
+				monypayments_fetched_at.disabled = false;
+			}
+		}
+            });
+
+    </script>
+<?php endif; ?>

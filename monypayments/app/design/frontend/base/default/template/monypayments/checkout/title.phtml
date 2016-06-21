@@ -1,0 +1,7 @@
+<?php $helper = Mage::helper('monypayments'); ?>
+<?php echo $this->getTemplateHelper()->getTitle(); ?>
+<div id="monypayments-title-cards">
+   <?php foreach($helper->getAvailableCcTypes() as $ccType) :?>
+      <img src="<?php echo $this->getTemplateHelper()->getImageCcTypes($ccType) ?>" alt="<?php echo $ccType ?>" id="monypayments_<?php echo strtolower($ccType) ?>"/>
+   <?php endforeach ?>
+</div>

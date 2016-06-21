@@ -1,0 +1,19 @@
+#monypayments-title-cards {
+    display: inline-block;
+    height: 100%;
+    line-height: 100%;
+    vertical-align: middle;
+    text-align: right;
+    padding-left: 3em;
+    padding-right: 0;
+}
+
+#monypayments-title-cards img {
+    margin-left: 0.2em;
+    height: 23px;
+    width: auto;
+}
+
+#payment_form_monypayments .hide {
+    display: none;
+}

@@ -1,0 +1,104 @@
+<?php
+/**
+ * Tokenjs file for Mony to generate token
+ *
+ * @package   Mony_Monypayments
+ * @author    Mony payments <support@monypayments.com>
+ * @copyright Copyright (c) 2015-2016 Mony payments (http://www.monypayments.com)
+ */
+?>
+<?php $_code = Mony_Monypayments_Model_Method_Card::PAYMENT_METHOD_CODE; // Set the code for creating token ?>
+
+<?php if (Mage::helper('monypayments')->isEnabled()) :?>
+    <script type="text/javascript">
+        // Load the MonyBasic class and create Mony data
+        var monyBasic;
+        if (typeof monyBasic !== 'object') {
+            monyBasic = new MonyBasic();
+        }
+
+        // Wrap around save payment details to generate token
+        Payment.addMethods({
+            save: function(){
+                if (checkout.loadWaiting!=false) return;
+
+                var validator = new Validation(this.form);
+                if (this.validate() && validator.validate()) {
+                    // set loading waiting
+                    checkout.setLoadWaiting('payment');
+
+                    var defaultPaymentAjax = function(element, params) {
+                        // check params for Mony
+                        params = (typeof params === 'undefined') ? Form.serialize(element.form) : params;
+
+                        //return save as original step to Ajax
+                        new Ajax.Request(
+                            element.saveUrl,
+                            {
+                                method:'post',
+                                onComplete: element.onComplete,
+                                onSuccess: element.onSave,
+                                onFailure: checkout.ajaxFailure.bind(checkout),
+                                parameters: params
+                            }
+                        );
+                    };
+
+                    // Calculate should process order or not
+                    var process = false;
+                    var monySelect = document.getElementById('<?php echo $_code ?>-payment-select');
+
+                    // If not login and use mony
+                    if (this.currentMethod == '<?php echo $_code ?>' && !monySelect) {
+                        process = true;
+                    }
+                    // If login and use mony
+                    else if (this.currentMethod == '<?php echo $_code ?>' && monySelect.value == 'new') {
+                        process = true;
+                    }
+
+                    // Check if should do the process
+                    if (process) {
+                        // return error message if Mony is not available
+                        if (typeof Mony == 'undefined') {
+                            alert('There was an error validating you card. Please try again later');
+                            checkout.setLoadWaiting(false);
+                        }
+                        // if Mony is available
+                        else {
+                            // Set parent class for submit ajax
+                            var parentClass = this;
+
+                            // Init Mony Function
+                            var moniInit = Mony.init({apiKey: '<?php echo $this->getApiKey() ?>'});
+
+                            // Generate Token using Moni.JS
+                            var form = document.getElementById(this.form);
+                            Mony.createCardToken({form: form}, function(err, response) {
+                                // If error show message to customer
+                                if (err) {
+                                    alert(err.message);
+                                } else { // Set token and date value
+                                    var parameters = {
+                                        'payment[cc_number_enc]': '',
+                                        'payment[cc_last4]': response.card.truncatedNumber,
+                                        'payment[monypayments_token]': response.card.token,
+                                        'payment[monypayments_fetched_at]': '<?php echo Mage::getSingleton('core/date')->gmtDate(); // Use UTC time to save to Database ?>'
+                                    };
+
+                                    // Added the Mony data to checkout
+                                    monyBasic.createHiddenInput(parameters, form);
+
+                                    // Start ajax to save
+                                    defaultPaymentAjax(parentClass);
+                                }
+                            });
+                        }
+                    } else {
+                        defaultPaymentAjax(this);
+                    }
+                }
+            }
+        });
+    </script>
+<?php endif; ?>

@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<layout>
+
+    <default translate="label" module="page">
+        <reference name="head">
+            <action method="addJs">><file>mony/monybasic.js</file></action>
+            <action method="addItem"><type>skin_css</type><name>monypayments/css/monypayments.css</name></action>
+        </reference>
+    </default>
+
+    <customer_account>
+        <reference name="customer_account_navigation">
+            <action method="addLink" translate="label" module="monypayments" ifconfig="payment/monypayments/active"><name>monypayments</name><path>monypayments/card/index</path><label>My Saved Cards</label></action>
+        </reference>
+    </customer_account>
+
+    <monypayments_card_index translate="label">
+        <label>Saved Payment Information</label>
+        <update handle="customer_account"/>
+        <!-- Mage_Customer -->
+        <reference name="root">
+            <action method="setTemplate"><template>page/2columns-left.phtml</template></action>
+        </reference>
+        <reference name="my.account.wrapper">
+            <block type="monypayments/customer_card" name="monypayments.customer.card" template="monypayments/customer/card.phtml" />
+        </reference>
+    </monypayments_card_index>
+
+    <checkout_onepage_index>
+        <reference name="head">
+            <block type="monypayments/includejs" name="monypayments.include.js" template="monypayments/checkout/include-js.phtml" />
+        </reference>
+        <reference name="content">
+            <block type="monypayments/tokenjs" name="monypayments.checkout.cart.token" after="checkout.onepage" template="monypayments/checkout/default.phtml" />
+        </reference>
+    </checkout_onepage_index>
+
+    <onestepcheckout_index_index>
+        <reference name="head">
+            <block type="monypayments/includejs" name="monypayments.default.include.js" template="monypayments/checkout/include-js.phtml" />
+        </reference>
+        <reference name="content">
+            <block type="monypayments/tokenjs" name="monypayments.checkout.cart.token" after="onestepcheckout" template="monypayments/checkout/onestepcheckout.phtml" />
+        </reference>
+    </onestepcheckout_index_index>
+
+    <opc_index_index>
+        <reference name="head">
+            <block type="monypayments/includejs" name="monypayments.default.include.js" template="monypayments/checkout/include-js.phtml" />
+        </reference>
+        <reference name="content">
+            <block type="monypayments/tokenjs" name="monypayments.checkout.cart.token" after="-" template="monypayments/checkout/iwd-opc.phtml" />
+        </reference>
+    </opc_index_index>
+
+</layout>

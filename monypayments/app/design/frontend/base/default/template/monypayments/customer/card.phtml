@@ -1,0 +1,48 @@
+<?php $cards = $this->getSavedCards(); ?>
+<?php $cardHelper = $this->helper('monypayments/card'); ?>
+
+<div class="page-title">
+    <h1><?php echo $this->__('My Saved Cards') ?></h1>
+</div>
+
+<?php echo $this->getMessagesBlock()->toHtml() ?>
+<div class="fieldset">
+
+    <?php if ($cards) : ?>
+        <p><?php echo $this->__("Click 'delete' to remove saved card or tick 'save' during checkout to add new card information."); ?></p>
+
+        <div class="block-title">
+            <h2 class="legend"><?php echo $this->__('Cards') ?></h2>
+        </div>
+
+        <div class="box-card-save">
+            <table class="data-table save-card" id="my-cards-table">
+                <thead>
+                    <tr class="first last">
+                        <th><?php echo $this->__('Type') ?></th>
+                        <th><?php echo $this->__('Card Number') ?></th>
+                        <th><?php echo $this->__('Expiry Date') ?></th>
+                        <th class="a-center view last"><?php echo $this->__('Actions') ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($cards as $card) : ?>
+                    <tr>
+                        <td><?php echo $cardHelper->getCardType($card) ?></td>
+                        <td><?php echo $cardHelper->getCardNumber($card) ?></td>
+                        <td><?php echo $cardHelper->getExpiryDate($card) ?></td>
+                        <td class="a-center view last">
+                            <span class="nobr">
+                                <a href="<?php echo $this->getDeleteUrl($card) ?>"><?php echo $this->__('Delete') ?></a>
+                            </span>
+                        </td>
+                    </tr>
+                <?php endforeach ; ?>
+                </tbody>
+            </table>
+        </div>
+
+    <?php else: ?>
+        <p><?php echo $this->__('You currently have no saved payment information, you can save a payment method when making a purchase.'); ?></p>
+    <?php endif; ?>
+</div>
