@@ -45,13 +45,15 @@ class Mony_Monypayments_Model_Api_Adapter extends Mony_Monypayments_Model_Api_Mo
     {
         $order = $payment->getOrder();
         $billing = $order->getBillingAddress();
-
+	
+	$billing_address = array_values($billing->getStreet());
+	
         // Payment method data
         $data =  array(
             'token' => $order->getPayment()->getMonypaymentsToken(),
             'billingAddress' => array(
                 'name'  => $billing->getName(),
-                'address1'  => array_values($billing->getStreet())[0],
+                'address1'  => $billing_address[0],
                 'suburb'    => $billing->getCity(),
                 'state'     => $billing->getRegion(),
                 'postcode'  => $billing->getPostcode(),
@@ -114,10 +116,11 @@ class Mony_Monypayments_Model_Api_Adapter extends Mony_Monypayments_Model_Api_Mo
         $data['items'] = $this->_itemData($order->getAllVisibleItems(), $order->getOrderCurrencyCode());
 
         if ($shipping = $order->getShippingAddress()) {
+		$shipping_address = array_values($shipping->getStreet());
             $data['shippingAddress'] = array(
                 'name' => $shipping->getName(),
-                'address1' => array_values($shipping->getStreet())[0],
-                'address2' => array_key_exists(1, $shipping->getStreet()) ? array_values($shipping->getStreet())[1] : '',
+                'address1' => $shipping_address[0],
+                'address2' => array_key_exists(1, $shipping_address) ? $shipping_address[1] : '',
                 'suburb'   => $shipping->getCity(),
                 'state'    => $shipping->getRegion(),
                 'postcode' => $shipping->getPostcode(),
@@ -138,6 +141,11 @@ class Mony_Monypayments_Model_Api_Adapter extends Mony_Monypayments_Model_Api_Mo
      */
     protected function _itemData($items, $currency = 'AUD')
     {
+
+        if( $currency != "AUD" ) {
+            $currency = "AUD";
+        }
+	
         // set original data
         $data = array();
 
@@ -159,4 +167,3 @@ class Mony_Monypayments_Model_Api_Adapter extends Mony_Monypayments_Model_Api_Mo
         return $data;
     }
 }
-
