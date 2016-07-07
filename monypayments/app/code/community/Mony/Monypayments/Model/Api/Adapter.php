@@ -22,9 +22,16 @@ class Mony_Monypayments_Model_Api_Adapter extends Mony_Monypayments_Model_Api_Mo
      */
     public function getChargeAmount($order, $amount)
     {
+        $currency = $order->getOrderCurrencyCode();
+
+        if( $currency != "AUD" ) {
+            Mage::helper('monypayments')->log(array('Marking as AUD from' => $currency));
+            $currency = "AUD";
+        }
         return array(
-            'amount' => $amount,
-            'currency' => $order->getOrderCurrencyCode()
+            'amount' => number_format($amount, 2),
+            // 'currency' => $order->getOrderCurrencyCode()
+            'currency' => $currency
             );
     }
 
@@ -142,7 +149,7 @@ class Mony_Monypayments_Model_Api_Adapter extends Mony_Monypayments_Model_Api_Mo
                 'sku'  => $item->getSku(),
                 'quantity'  => $item->getQtyOrdered(),
                 'price' => array(
-                    'amount' => $item->getPrice(),
+                    'amount' => number_format($item->getPrice(), 2),
                     'currency' => $currency,
                 )
             );
